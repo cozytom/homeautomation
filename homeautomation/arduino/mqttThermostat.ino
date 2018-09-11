@@ -137,7 +137,7 @@ void setup() {
 
   // Connect to MQTT
   Serial.print(s+"Connecting to MQTT: "+MQTT_SERVER+" ... ");
-  if (client.connect("ESP8266Client")) {
+  if (client.connect("SRThermostat")) {
     Serial.println("connected");
 
     mqtt.subscribe("heater/light", topic1_subscriber);

@@ -1,23 +1,36 @@
+/**
+ * Simple action node. Received MQTT message "on" or "off" on topics
+ * 
+ * heater/gas to control the heater
+ * heater/light to control the LED in the box.
+ * 
+ * They are separate devices, but using Node Red can be connected.
+ * (there is a dimmer LED when the relay is engaged).
+ * 
+ * TGB 9/9/18
+ */
+
+
+
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <PubSubClientTools.h>
 
+
 #include <Thread.h>             // https://github.com/ivanseidel/ArduinoThread
 #include <ThreadController.h>
+/**/
 
 const char* ssid = "raspi-webgui";
 const char* password = "MQTTraspi";
 const char* MQTT_SERVER = "10.3.141.1";
-/*
-const char* ssid = "CenturyLink7941";
-const char* password = "e4hubc44d6u8r6";
-const char* MQTT_SERVER = "192.168.0.27";
-*/
+
 String state="off";
 
 WiFiClient espClient;
 PubSubClient client(MQTT_SERVER, 1883, espClient);
 PubSubClientTools mqtt(client);
+
 
 ThreadController threadControl = ThreadController();
 Thread thread = Thread();
@@ -45,7 +58,7 @@ void setup() {
 
   // Connect to MQTT
   Serial.print(s+"Connecting to MQTT: "+MQTT_SERVER+" ... ");
-  if (client.connect("ESP8266Client")) {
+  if (client.connect("SRHeatControl")) {
     Serial.println("connected");
 
     mqtt.subscribe("heater/light", topic1_subscriber);
@@ -53,14 +66,39 @@ void setup() {
   } else {
     Serial.println(s+"failed, rc="+client.state());
   }
-
+  
   // Enable Thread
   thread.onRun(publisher);
   thread.setInterval(2000);
   threadControl.add(&thread);
+  
+}
+
+void reconnect() {
+  // Loop until we're reconnected
+  while (!client.connected()) {
+    Serial.print("Attempting MQTT connection...");
+    // Attempt to connect
+    if (client.connect("arduinoClient")) {
+      Serial.println("connected");
+      // Once connected, publish an announcement...
+      client.publish("outTopic","hello world");
+      // ... and resubscribe
+      client.subscribe("inTopic");
+    } else {
+      Serial.print("failed, rc=");
+      Serial.print(client.state());
+      Serial.println(" Resetting");
+      // Wait 5 seconds before retrying
+    }
+  }
 }
 
 void loop() {
+  if (!client.connected()) {
+    reconnect();
+  }
+  
   client.loop();
   threadControl.run();
   publisher();
@@ -101,4 +139,5 @@ void topic2_subscriber(String topic, String message) {
     digitalWrite(relayPin, LOW);
     state="off";
   }
+  Serial.println(s+" function 2 ["+topic+"] "+message+"  Done.");
 }
