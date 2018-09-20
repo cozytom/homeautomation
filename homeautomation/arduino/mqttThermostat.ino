@@ -33,6 +33,7 @@
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <PubSubClientTools.h>
+#include <ArduinoJson.h>
 
 /**
 #include <Thread.h>             // https://github.com/ivanseidel/ArduinoThread
@@ -73,8 +74,6 @@ XPT2046_Touchscreen ts(TCS_PIN, TIRQ_PIN);  // Param 2 - Touch IRQ Pin - interru
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC);
 
 
-
-
 WiFiClient espClient;
 PubSubClient client(MQTT_SERVER, 1883, espClient);
 PubSubClientTools mqtt(client);
@@ -101,8 +100,6 @@ String publishedThermo="70";
 const int width=240;
 const int height=320;
 
-void (* resetFunc)(void)=0;  // have a reset function, in case reconnect fails
-
 void setup() {
   Serial.begin(115200);
 
@@ -128,6 +125,7 @@ void setup() {
 
   // Connect to WiFi
   Serial.print(s+"Connecting to WiFi: "+ssid+" ");
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -158,20 +156,18 @@ void reconnect() {
   // Loop until we're reconnected
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
-    ESP.reset();
     // Attempt to connect
     if (client.connect("arduinoClient")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("outTopic","hello world");
-      // ... and resubscribe
-      client.subscribe("inTopic");
+      client.publish("outTopic","thermostat Restart");
+      mqtt.subscribe("heater/light", topic1_subscriber);
+      mqtt.subscribe("heater/thermostat", topic2_subscriber);
+      mqtt.subscribe("time/ISO-8601", topic3_subscriber);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
-      Serial.println(" Resetting");
       // Wait 5 seconds before retrying
-      ESP.reset();
     }
   }
 }
@@ -361,6 +357,16 @@ void topic2_subscriber(String topic, String message) {
  * Read current time.  (ISO-8601 format: 2016-06-01T21:34:12.629Z)
  */
 void topic3_subscriber(String topic, String message) {
-  Serial.println(s+"Message arrived in function 3 ["+topic+"] "+message);
-  currTime = message;
+  StaticJsonDocument<300> doc;
+
+  DeserializationError error = deserializeJson(doc, message);
+  if (error) {
+    Serial.println("Parsing failed");
+    return;
+  }
+   // Get the root object in the document
+  JsonObject root = doc.as<JsonObject>();
+
+  currTime = root["CDTstring"].as<String>();
+  Serial.println(s+"Message arrived in function 3 ["+topic+"] "+currTime);
 }

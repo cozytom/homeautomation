@@ -10,16 +10,14 @@
  * TGB 9/9/18
  */
 
-
-
 #include <ESP8266WiFi.h>
 #include <PubSubClient.h>
 #include <PubSubClientTools.h>
 
-
+/*
 #include <Thread.h>             // https://github.com/ivanseidel/ArduinoThread
 #include <ThreadController.h>
-/**/
+*/
 
 const char* ssid = "raspi-webgui";
 const char* password = "MQTTraspi";
@@ -31,9 +29,10 @@ WiFiClient espClient;
 PubSubClient client(MQTT_SERVER, 1883, espClient);
 PubSubClientTools mqtt(client);
 
-
+/*
 ThreadController threadControl = ThreadController();
 Thread thread = Thread();
+*/
 
 #define relayPin  4 // Relay Control
 
@@ -68,10 +67,9 @@ void setup() {
   }
   
   // Enable Thread
-  thread.onRun(publisher);
-  thread.setInterval(2000);
-  threadControl.add(&thread);
-  
+  // thread.onRun(publisher);
+  // thread.setInterval(2000);
+  // threadControl.add(&thread);
 }
 
 void reconnect() {
@@ -82,9 +80,10 @@ void reconnect() {
     if (client.connect("arduinoClient")) {
       Serial.println("connected");
       // Once connected, publish an announcement...
-      client.publish("outTopic","hello world");
+      client.publish("outTopic","heaterControl Reconnect");
       // ... and resubscribe
-      client.subscribe("inTopic");
+      mqtt.subscribe("heater/light", topic1_subscriber);
+      mqtt.subscribe("heater/gas", topic2_subscriber);
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());
@@ -100,7 +99,7 @@ void loop() {
   }
   
   client.loop();
-  threadControl.run();
+  // threadControl.run();
   publisher();
 }
 
